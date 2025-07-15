@@ -1,12 +1,12 @@
 class Claudia < Formula
   desc "Model Context Protocol (MCP) server management tool"
   homepage "https://github.com/getAsterisk/claudia"
-  license "AGPL-3.0"
+  license "AGPL-3.0-only"
   head "https://github.com/getAsterisk/claudia.git", branch: "main"
 
-  depends_on "rust" => :build
   depends_on "node" => :build
   depends_on "pkg-config" => :build
+  depends_on "rust" => :build
 
   # Bun is required but not in Homebrew, so we download it
   resource "bun" do
@@ -24,9 +24,9 @@ class Claudia < Formula
   def install
     # Check for nvm-managed node first
     node_bin = if ENV["NVM_DIR"] && File.exist?("#{ENV["NVM_DIR"]}/nvm.sh")
-                 node_path = Dir.glob("#{ENV["NVM_DIR"]}/versions/node/*/bin/node").max
-                 File.dirname(node_path) if node_path
-               end
+      node_path = Dir.glob("#{ENV["NVM_DIR"]}/versions/node/*/bin/node").max
+      File.dirname(node_path) if node_path
+    end
 
     # Fall back to Homebrew node
     node_bin ||= Formula["node"].opt_bin
@@ -70,7 +70,7 @@ class Claudia < Formula
 
   test do
     # Test 1: Check if the binary exists and runs
-    assert_predicate bin/"claudia", :exist?
+    assert_path_exists bin/"claudia"
     assert_predicate bin/"claudia", :executable?
 
     # Test 2: Basic functionality - version or help
@@ -86,7 +86,7 @@ class Claudia < Formula
     # Test 4: Test initialization (if supported)
     begin
       system bin/"claudia", "init"
-      assert_predicate config_dir/"config.json", :exist?
+      assert_path_exists config_dir/"config.json"
     rescue
       # If init doesn't work, create a minimal config
       (config_dir/"config.json").write '{"servers": []}'
