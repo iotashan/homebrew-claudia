@@ -48,9 +48,9 @@ class Claudia < Formula
     ohai "Node: #{node_bin}"
     ohai "Rust: #{which("rustc")}"
 
-    # Install dependencies
+    # Install dependencies with timeout and no-save to avoid lockfile issues
     ohai "Installing dependencies..."
-    system buildpath/"bun-bin/bun", "install", "--frozen-lockfile"
+    system buildpath/"bun-bin/bun", "install", "--no-save"
 
     # Fetch and build Claude Code binaries
     ohai "Fetching Claude Code binaries..."
