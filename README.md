@@ -33,13 +33,18 @@ This will open the Claudia GUI application.
 
 ## What is Claudia?
 
-Claudia is a GUI application for managing Model Context Protocol (MCP) servers. It provides:
-- **Server Registry**: Manage MCP servers from a central graphical interface
-- **Easy Configuration**: Add servers via UI or import from existing configs
-- **Connection Testing**: Verify server connectivity before use
-- **Claude Desktop Import**: Import server configurations from Claude Desktop
+Claudia is a powerful desktop GUI application that enhances your Claude Code experience. It transforms command-line interactions into an intuitive visual interface, serving as a comprehensive command center for AI-assisted software development.
 
-It's built with Tauri (Rust + TypeScript) for a native macOS experience.
+### Key Features
+
+- **Project & Session Management**: Visual project browser with session history tracking and smart search
+- **Custom AI Agents**: Create specialized agents with custom system prompts, build an agent library, and track execution history
+- **Usage Analytics**: Real-time API usage tracking, cost monitoring, and detailed token analytics with visualizations
+- **MCP Server Management**: Integrated Model Context Protocol server configuration and management
+- **CLAUDE.md Management**: Built-in editor for managing your project's Claude configuration files
+- **Session Timeline**: Track checkpoints and navigate through your development history
+
+Built with Tauri 2 (Rust + TypeScript + React) for a fast, secure, native desktop experience across Windows, macOS, and Linux.
 
 ## Troubleshooting
 
