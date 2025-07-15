@@ -54,14 +54,38 @@ class Claudia < Formula
 
     # Build Claudia using Tauri
     ohai "Building Claudia (this may take a while)..."
-    system buildpath/"bun-bin/bun", "run", "tauri", "build"
+    begin
+      system buildpath/"bun-bin/bun", "run", "tauri", "build"
+    rescue => e
+      opoo "Tauri build encountered an error: #{e.message}"
+    end
 
     # Find the generated .dmg installer
     ohai "Looking for generated installer..."
     dmg_path = Dir.glob(buildpath/"src-tauri/target/release/bundle/dmg/*.dmg").first
     
+    # If no DMG found, check for the app bundle
     if dmg_path.nil?
-      odie "Build completed but no .dmg installer was found!"
+      app_path = buildpath/"src-tauri/target/release/bundle/macos/Claudia.app"
+      if app_path.exist?
+        opoo "DMG creation failed, but app bundle was built successfully"
+        opoo "The app bundle is available at: #{app_path}"
+        
+        # Try to create DMG manually
+        ohai "Attempting to create DMG manually..."
+        dmg_name = "Claudia_0.1.0_#{Hardware::CPU.arch}.dmg"
+        dmg_path = buildpath/"src-tauri/target/release/bundle/dmg"/dmg_name
+        
+        # Create a simple DMG from the app bundle
+        system "hdiutil", "create", "-volname", "Claudia", "-srcfolder", app_path, 
+               "-ov", "-format", "UDZO", dmg_path
+        
+        unless File.exist?(dmg_path)
+          odie "Failed to create DMG installer. App bundle is at: #{app_path}"
+        end
+      else
+        odie "Build failed: neither DMG nor app bundle was found!"
+      end
     end
     
     ohai "Found installer: #{File.basename(dmg_path)}"
