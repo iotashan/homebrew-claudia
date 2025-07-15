@@ -34,6 +34,7 @@ class Claudia < Formula
     # Install Bun locally for the build
     resource("bun").stage do
       (buildpath/"bun-bin").install "bun"
+      chmod 0755, buildpath/"bun-bin/bun"
     end
 
     # Prepare build environment
@@ -41,17 +42,39 @@ class Claudia < Formula
     ENV.prepend_path "PATH", node_bin
     ENV["RUST_BACKTRACE"] = "1"
 
+    # Log the environment for debugging
+    ohai "Building Claudia with:"
+    ohai "Bun: #{buildpath/"bun-bin/bun"}"
+    ohai "Node: #{node_bin}"
+    ohai "Rust: #{which("rustc")}"
+
     # Install dependencies
-    system "bun", "install"
+    ohai "Installing dependencies..."
+    system buildpath/"bun-bin/bun", "install", "--frozen-lockfile"
 
     # Fetch and build Claude Code binaries
-    system "bun", "run", "scripts/fetch-and-build.js", "--", "macos"
+    ohai "Fetching Claude Code binaries..."
+    system buildpath/"bun-bin/bun", "run", "scripts/fetch-and-build.js", "--", "macos"
 
     # Build the Tauri application
-    system "bun", "run", "build"
+    ohai "Building Tauri application..."
+    system buildpath/"bun-bin/bun", "run", "build"
 
-    # The built binary should be in src-tauri/target/release
-    bin.install "src-tauri/target/release/claudia"
+    # Find and install the built binary
+    # Tauri apps usually output to src-tauri/target/release
+    if File.exist?("src-tauri/target/release/claudia")
+      bin.install "src-tauri/target/release/claudia"
+    elsif File.exist?("src-tauri/target/release/Claudia")
+      bin.install "src-tauri/target/release/Claudia" => "claudia"
+    else
+      # Try to find the binary in other common locations
+      binary = Dir["src-tauri/target/release/*"].find { |f| File.executable?(f) && !File.directory?(f) }
+      if binary
+        bin.install binary => "claudia"
+      else
+        odie "Could not find built binary. Build may have failed."
+      end
+    end
   end
 
   def caveats
