@@ -74,7 +74,12 @@ class Claudia < Formula
         # Try to create DMG manually
         ohai "Attempting to create DMG manually..."
         dmg_name = "Claudia_0.1.0_#{Hardware::CPU.arch}.dmg"
-        dmg_path = buildpath/"src-tauri/target/release/bundle/dmg"/dmg_name
+        dmg_dir = buildpath/"src-tauri/target/release/bundle/dmg"
+        dmg_path = dmg_dir/dmg_name
+        
+        # Ensure the directory exists and remove any existing DMG
+        dmg_dir.mkpath
+        dmg_path.unlink if dmg_path.exist?
         
         # Create a simple DMG from the app bundle
         system "hdiutil", "create", "-volname", "Claudia", "-srcfolder", app_path, 
