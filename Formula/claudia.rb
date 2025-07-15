@@ -48,49 +48,80 @@ class Claudia < Formula
     ohai "Node: #{node_bin}"
     ohai "Rust: #{which("rustc")}"
 
-    # Install dependencies with timeout and no-save to avoid lockfile issues
+    # Install dependencies
     ohai "Installing dependencies..."
-    system buildpath/"bun-bin/bun", "install", "--no-save"
+    system buildpath/"bun-bin/bun", "install"
 
-    # For now, skip the fetch-and-build step as it seems to fail
-    # TODO: Fix this once we understand the issue
+    # Build Claudia using Tauri
+    ohai "Building Claudia (this may take a while)..."
+    system buildpath/"bun-bin/bun", "run", "tauri", "build"
+
+    # Find the generated .dmg installer
+    ohai "Looking for generated installer..."
+    dmg_path = Dir.glob(buildpath/"src-tauri/target/release/bundle/dmg/*.dmg").first
     
-    # Create a placeholder binary for E2E testing
-    ohai "Creating placeholder Claudia binary for testing..."
-    (bin/"claudia").write <<~EOS
+    if dmg_path.nil?
+      odie "Build completed but no .dmg installer was found!"
+    end
+    
+    ohai "Found installer: #{File.basename(dmg_path)}"
+    
+    # Create installers directory and copy the .dmg
+    (prefix/"installers").mkpath
+    installer_name = File.basename(dmg_path)
+    installer_dest = prefix/"installers"/installer_name
+    cp dmg_path, installer_dest
+    
+    # Store the installer path for use in caveats
+    @installer_path = installer_dest
+    
+    # Create a helper script to output the installer path
+    (bin/"claudia-installer-path").write <<~EOS
       #!/usr/bin/env bash
-      if [[ "$1" == "--help" ]] || [[ "$1" == "-h" ]]; then
-        echo "Claudia MCP Server Manager v0.1.0"
-        echo ""
-        echo "Usage: claudia [command]"
-        echo ""
-        echo "Commands:"
-        echo "  init          Initialize Claudia configuration"
-        echo "  server add    Add a new MCP server"
-        echo "  server list   List configured servers"
-        echo "  server test   Test server connection"
-        echo ""
-        echo "This is a development build from Homebrew (placeholder)"
-        exit 1
+      echo "#{installer_dest}"
+    EOS
+    chmod 0755, bin/"claudia-installer-path"
+    
+    # Also create a convenience script to open the installer
+    (bin/"claudia-install").write <<~EOS
+      #!/usr/bin/env bash
+      INSTALLER_PATH="#{installer_dest}"
+      if [[ -f "$INSTALLER_PATH" ]]; then
+        echo "Opening Claudia installer..."
+        open "$INSTALLER_PATH"
       else
-        echo "Claudia MCP Server Manager v0.1.0"
-        echo "This is a development build from Homebrew"
-        echo ""
-        echo "Note: Full build coming soon. This is a placeholder."
-        echo "See: https://github.com/getAsterisk/claudia"
+        echo "Error: Installer not found at $INSTALLER_PATH"
+        exit 1
       fi
     EOS
-    chmod 0755, bin/"claudia"
+    chmod 0755, bin/"claudia-install"
   end
 
   def caveats
+    installer_msg = if @installer_path && File.exist?(@installer_path)
+      <<~MSG
+        Claudia installer has been built and saved to:
+          #{@installer_path}
+
+        To install Claudia, you can either:
+          - Run: claudia-install
+          - Run: open "#{@installer_path}"
+          - Double-click the .dmg file in Finder
+
+        To get the installer path programmatically:
+          claudia-installer-path
+      MSG
+    else
+      <<~MSG
+        Note: The Claudia installer location will be displayed after installation.
+      MSG
+    end
+
     <<~EOS
+      #{installer_msg}
+
       Claudia requires Claude Code CLI to be installed separately.
       Please install it from: https://claude.ai/download
-
-      To get started with Claudia:
-        claudia init
-        claudia server add
 
       For more information, visit:
         https://github.com/getAsterisk/claudia
@@ -98,17 +129,19 @@ class Claudia < Formula
   end
 
   test do
-    # Test 1: Check if the binary exists and runs
-    assert_path_exists bin/"claudia"
-    assert_predicate bin/"claudia", :executable?
+    # Test 1: Check if the helper scripts exist and are executable
+    assert_path_exists bin/"claudia-installer-path"
+    assert_predicate bin/"claudia-installer-path", :executable?
+    
+    assert_path_exists bin/"claudia-install"
+    assert_predicate bin/"claudia-install", :executable?
 
-    # Test 2: Basic functionality - help
-    output = shell_output("#{bin}/claudia --help 2>&1", 1)
-    assert_match "Claudia MCP Server Manager", output
-    assert_match "Commands:", output
+    # Test 2: Check if installer path script returns a path
+    output = shell_output("#{bin}/claudia-installer-path")
+    assert_match %r{/installers/.*\.dmg}, output
 
-    # Test 3: Basic run without arguments
-    output = shell_output("#{bin}/claudia 2>&1")
-    assert_match "Claudia MCP Server Manager", output
+    # Test 3: Verify the installer exists at the reported path
+    installer_path = output.strip
+    assert_match "Claudia", installer_path
   end
 end
