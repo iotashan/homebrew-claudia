@@ -6,8 +6,10 @@ Homebrew tap for [Claudia](https://github.com/getAsterisk/claudia), an MCP (Mode
 
 ```bash
 brew tap iotashan/claudia
-brew install claudia
+brew install --HEAD claudia
 ```
+
+**Note:** This formula is currently head-only (builds from the latest source) as Claudia doesn't have versioned releases yet. The `--HEAD` flag is required.
 
 ## Requirements
 
@@ -38,7 +40,7 @@ If you encounter issues during installation:
 
 3. Check the build logs:
    ```bash
-   brew install --verbose --debug claudia
+   brew install --HEAD --verbose --debug claudia
    ```
 
 ## Contributing
