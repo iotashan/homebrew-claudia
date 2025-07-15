@@ -142,33 +142,46 @@ class Claudia < Formula
   end
 
   def caveats
-    installer_msg = if @installer_path && (File.exist?(@installer_path) || Dir.exist?(@installer_path))
-      if @is_app_bundle
+    # Check if installer directory exists and what's in it
+    installer_dir = prefix/"installers"
+    installer_msg = if installer_dir.exist?
+      # Check for .app bundle
+      app_path = installer_dir/"Claudia.app"
+      if app_path.exist?
         <<~MSG
           Claudia app bundle has been built and saved to:
-            #{@installer_path}
+            #{app_path}
 
           To run Claudia, you can either:
             - Run: claudia-install
-            - Run: open "#{@installer_path}"
+            - Run: open "#{app_path}"
             - Double-click Claudia.app in Finder
 
           To get the app path programmatically:
             claudia-installer-path
         MSG
       else
-        <<~MSG
-          Claudia installer has been built and saved to:
-            #{@installer_path}
+        # Check for .dmg file
+        dmg_files = Dir.glob(installer_dir/"*.dmg")
+        if dmg_files.any?
+          dmg_path = dmg_files.first
+          <<~MSG
+            Claudia installer has been built and saved to:
+              #{dmg_path}
 
-          To install Claudia, you can either:
-            - Run: claudia-install
-            - Run: open "#{@installer_path}"
-            - Double-click the .dmg file in Finder
+            To install Claudia, you can either:
+              - Run: claudia-install
+              - Run: open "#{dmg_path}"
+              - Double-click the .dmg file in Finder
 
-          To get the installer path programmatically:
-            claudia-installer-path
-        MSG
+            To get the installer path programmatically:
+              claudia-installer-path
+          MSG
+        else
+          <<~MSG
+            Note: The Claudia installer location will be displayed after installation.
+          MSG
+        end
       end
     else
       <<~MSG
