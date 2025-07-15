@@ -1,6 +1,14 @@
 # Homebrew Claudia
 
-Homebrew tap for [Claudia](https://github.com/getAsterisk/claudia), an MCP (Model Context Protocol) server management tool.
+Homebrew tap for [Claudia](https://github.com/getAsterisk/claudia), an MCP (Model Context Protocol) server management GUI application.
+
+## About This Formula
+
+This is a **hybrid approach**: while Claudia is a GUI application (which would typically be distributed as a Homebrew Cask), we're using a Formula to build it from source because:
+
+1. Claudia doesn't publish pre-built releases yet
+2. Building from source ensures you get the latest version
+3. Once Claudia publishes releases, this can be converted to a proper Cask
 
 ## Installation
 
@@ -9,7 +17,14 @@ brew tap iotashan/claudia
 brew install --HEAD claudia
 ```
 
-**Note:** This formula is currently head-only (builds from the latest source) as Claudia doesn't have versioned releases yet. The `--HEAD` flag is required.
+**Note:** The `--HEAD` flag is required as this builds from the latest source.
+
+After installation, you can run Claudia with:
+```bash
+claudia
+```
+
+This will open the Claudia GUI application.
 
 ## Requirements
 
@@ -18,11 +33,13 @@ brew install --HEAD claudia
 
 ## What is Claudia?
 
-Claudia is a Model Context Protocol (MCP) server management tool that provides:
-- Server Registry: Manage MCP servers from a central UI
-- Easy Configuration: Add servers via UI or import from existing configs
-- Connection Testing: Verify server connectivity before use
-- Claude Desktop Import: Import server configurations from Claude Desktop
+Claudia is a GUI application for managing Model Context Protocol (MCP) servers. It provides:
+- **Server Registry**: Manage MCP servers from a central graphical interface
+- **Easy Configuration**: Add servers via UI or import from existing configs
+- **Connection Testing**: Verify server connectivity before use
+- **Claude Desktop Import**: Import server configurations from Claude Desktop
+
+It's built with Tauri (Rust + TypeScript) for a native macOS experience.
 
 ## Troubleshooting
 

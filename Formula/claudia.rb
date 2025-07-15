@@ -1,5 +1,5 @@
 class Claudia < Formula
-  desc "Model Context Protocol (MCP) server management tool"
+  desc "Model Context Protocol (MCP) server management GUI (built from source)"
   homepage "https://github.com/getAsterisk/claudia"
   license "AGPL-3.0-only"
   head "https://github.com/getAsterisk/claudia.git", branch: "main"
@@ -70,36 +70,16 @@ class Claudia < Formula
       if app_path.exist?
         opoo "DMG creation failed, but app bundle was built successfully"
         
-        # Copy the app bundle to a stable location
-        ohai "Copying app bundle to installers directory..."
-        (prefix/"installers").mkpath
-        app_dest = prefix/"installers/Claudia.app"
-        cp_r app_path, app_dest
+        # Install the app bundle to the prefix
+        ohai "Installing Claudia.app..."
+        prefix.install app_path
         
-        # Set the app path for caveats
-        @installer_path = app_dest
-        @is_app_bundle = true
-        
-        # Create helper script to get app path
-        (bin/"claudia-installer-path").write <<~EOS
+        # Create a wrapper script that opens the app
+        (bin/"claudia").write <<~EOS
           #!/usr/bin/env bash
-          echo "#{app_dest}"
+          exec open "#{prefix}/Claudia.app" "$@"
         EOS
-        chmod 0755, bin/"claudia-installer-path"
-        
-        # Create script to open the app
-        (bin/"claudia-install").write <<~EOS
-          #!/usr/bin/env bash
-          APP_PATH="#{app_dest}"
-          if [[ -d "$APP_PATH" ]]; then
-            echo "Opening Claudia app..."
-            open "$APP_PATH"
-          else
-            echo "Error: App not found at $APP_PATH"
-            exit 1
-          fi
-        EOS
-        chmod 0755, bin/"claudia-install"
+        chmod 0755, bin/"claudia"
         
         # Skip DMG creation and return early
         return
@@ -108,89 +88,45 @@ class Claudia < Formula
       end
     end
     
-    ohai "Found installer: #{File.basename(dmg_path)}"
+    # If we got here, DMG was created but we'll still use the app bundle approach
+    # for consistency
+    opoo "DMG was created but we'll install the app bundle for better Homebrew integration"
     
-    # Create installers directory and copy the .dmg
-    (prefix/"installers").mkpath
-    installer_name = File.basename(dmg_path)
-    installer_dest = prefix/"installers"/installer_name
-    cp dmg_path, installer_dest
-    
-    # Store the installer path for use in caveats
-    @installer_path = installer_dest
-    
-    # Create a helper script to output the installer path
-    (bin/"claudia-installer-path").write <<~EOS
-      #!/usr/bin/env bash
-      echo "#{installer_dest}"
-    EOS
-    chmod 0755, bin/"claudia-installer-path"
-    
-    # Also create a convenience script to open the installer
-    (bin/"claudia-install").write <<~EOS
-      #!/usr/bin/env bash
-      INSTALLER_PATH="#{installer_dest}"
-      if [[ -f "$INSTALLER_PATH" ]]; then
-        echo "Opening Claudia installer..."
-        open "$INSTALLER_PATH"
-      else
-        echo "Error: Installer not found at $INSTALLER_PATH"
-        exit 1
-      fi
-    EOS
-    chmod 0755, bin/"claudia-install"
+    app_path = buildpath/"src-tauri/target/release/bundle/macos/Claudia.app"
+    if app_path.exist?
+      # Install the app bundle to the prefix
+      ohai "Installing Claudia.app..."
+      prefix.install app_path
+      
+      # Create a wrapper script that opens the app
+      (bin/"claudia").write <<~EOS
+        #!/usr/bin/env bash
+        exec open "#{prefix}/Claudia.app" "$@"
+      EOS
+      chmod 0755, bin/"claudia"
+    else
+      odie "Build succeeded but app bundle not found!"
+    end
   end
 
   def caveats
-    # Check if installer directory exists and what's in it
-    installer_dir = prefix/"installers"
-    installer_msg = if installer_dir.exist?
-      # Check for .app bundle
-      app_path = installer_dir/"Claudia.app"
-      if app_path.exist?
-        <<~MSG
-          Claudia app bundle has been built and saved to:
-            #{app_path}
-
-          To run Claudia, you can either:
-            - Run: claudia-install
-            - Run: open "#{app_path}"
-            - Double-click Claudia.app in Finder
-
-          To get the app path programmatically:
-            claudia-installer-path
-        MSG
-      else
-        # Check for .dmg file
-        dmg_files = Dir.glob(installer_dir/"*.dmg")
-        if dmg_files.any?
-          dmg_path = dmg_files.first
-          <<~MSG
-            Claudia installer has been built and saved to:
-              #{dmg_path}
-
-            To install Claudia, you can either:
-              - Run: claudia-install
-              - Run: open "#{dmg_path}"
-              - Double-click the .dmg file in Finder
-
-            To get the installer path programmatically:
-              claudia-installer-path
-          MSG
-        else
-          <<~MSG
-            Note: The Claudia installer location will be displayed after installation.
-          MSG
-        end
-      end
-    else
-      <<~MSG
-        Note: The Claudia installer location will be displayed after installation.
-      MSG
-    end
-
     <<~EOS
-      #{installer_msg}
+      Claudia.app has been built from source and installed to:
+        #{prefix}/Claudia.app
+
+      To run Claudia:
+        claudia
+
+      This will open the Claudia GUI application.
+
+      You can also:
+        - Open directly: open #{prefix}/Claudia.app
+        - Add to Applications folder: ln -sf #{prefix}/Claudia.app /Applications/
+        - Add to Launchpad: open #{prefix}
+
+      Note: This is a GUI application built as a formula (not a cask) because
+      Claudia doesn't publish pre-built releases yet. Once releases are available,
+      this may be converted to a cask for easier installation.
 
       Claudia requires Claude Code CLI to be installed separately.
       Please install it from: https://claude.ai/download
@@ -201,19 +137,16 @@ class Claudia < Formula
   end
 
   test do
-    # Test 1: Check if the helper scripts exist and are executable
-    assert_path_exists bin/"claudia-installer-path"
-    assert_predicate bin/"claudia-installer-path", :executable?
+    # Test 1: Check if the claudia launcher exists and is executable
+    assert_path_exists bin/"claudia"
+    assert_predicate bin/"claudia", :executable?
     
-    assert_path_exists bin/"claudia-install"
-    assert_predicate bin/"claudia-install", :executable?
-
-    # Test 2: Check if installer path script returns a path
-    output = shell_output("#{bin}/claudia-installer-path")
-    assert_match %r{/installers/.*\.dmg}, output
-
-    # Test 3: Verify the installer exists at the reported path
-    installer_path = output.strip
-    assert_match "Claudia", installer_path
+    # Test 2: Check if Claudia.app was installed
+    assert_path_exists prefix/"Claudia.app"
+    assert_path_exists prefix/"Claudia.app/Contents/MacOS/Claudia"
+    
+    # Test 3: Verify the launcher script contains the correct path
+    launcher_content = File.read(bin/"claudia")
+    assert_match prefix/"Claudia.app", launcher_content
   end
 end
