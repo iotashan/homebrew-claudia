@@ -69,25 +69,40 @@ class Claudia < Formula
       app_path = buildpath/"src-tauri/target/release/bundle/macos/Claudia.app"
       if app_path.exist?
         opoo "DMG creation failed, but app bundle was built successfully"
-        opoo "The app bundle is available at: #{app_path}"
         
-        # Try to create DMG manually
-        ohai "Attempting to create DMG manually..."
-        dmg_name = "Claudia_0.1.0_#{Hardware::CPU.arch}.dmg"
+        # Copy the app bundle to a stable location
+        ohai "Copying app bundle to installers directory..."
+        (prefix/"installers").mkpath
+        app_dest = prefix/"installers/Claudia.app"
+        cp_r app_path, app_dest
         
-        # Create DMG in buildpath directly
-        dmg_path = buildpath/dmg_name
+        # Set the app path for caveats
+        @installer_path = app_dest
+        @is_app_bundle = true
         
-        # Remove any existing DMG
-        dmg_path.unlink if dmg_path.exist?
+        # Create helper script to get app path
+        (bin/"claudia-installer-path").write <<~EOS
+          #!/usr/bin/env bash
+          echo "#{app_dest}"
+        EOS
+        chmod 0755, bin/"claudia-installer-path"
         
-        # Create a simple DMG from the app bundle
-        system "hdiutil", "create", "-volname", "Claudia", "-srcfolder", app_path, 
-               "-ov", "-format", "UDZO", dmg_path
+        # Create script to open the app
+        (bin/"claudia-install").write <<~EOS
+          #!/usr/bin/env bash
+          APP_PATH="#{app_dest}"
+          if [[ -d "$APP_PATH" ]]; then
+            echo "Opening Claudia app..."
+            open "$APP_PATH"
+          else
+            echo "Error: App not found at $APP_PATH"
+            exit 1
+          fi
+        EOS
+        chmod 0755, bin/"claudia-install"
         
-        unless File.exist?(dmg_path)
-          odie "Failed to create DMG installer. App bundle is at: #{app_path}"
-        end
+        # Skip DMG creation and return early
+        return
       else
         odie "Build failed: neither DMG nor app bundle was found!"
       end
@@ -127,19 +142,34 @@ class Claudia < Formula
   end
 
   def caveats
-    installer_msg = if @installer_path && File.exist?(@installer_path)
-      <<~MSG
-        Claudia installer has been built and saved to:
-          #{@installer_path}
+    installer_msg = if @installer_path && (File.exist?(@installer_path) || Dir.exist?(@installer_path))
+      if @is_app_bundle
+        <<~MSG
+          Claudia app bundle has been built and saved to:
+            #{@installer_path}
 
-        To install Claudia, you can either:
-          - Run: claudia-install
-          - Run: open "#{@installer_path}"
-          - Double-click the .dmg file in Finder
+          To run Claudia, you can either:
+            - Run: claudia-install
+            - Run: open "#{@installer_path}"
+            - Double-click Claudia.app in Finder
 
-        To get the installer path programmatically:
-          claudia-installer-path
-      MSG
+          To get the app path programmatically:
+            claudia-installer-path
+        MSG
+      else
+        <<~MSG
+          Claudia installer has been built and saved to:
+            #{@installer_path}
+
+          To install Claudia, you can either:
+            - Run: claudia-install
+            - Run: open "#{@installer_path}"
+            - Double-click the .dmg file in Finder
+
+          To get the installer path programmatically:
+            claudia-installer-path
+        MSG
+      end
     else
       <<~MSG
         Note: The Claudia installer location will be displayed after installation.
