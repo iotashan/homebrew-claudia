@@ -13,7 +13,7 @@ class Claudia < Formula
     on_macos do
       if Hardware::CPU.arm?
         url "https://github.com/oven-sh/bun/releases/download/bun-v1.1.42/bun-darwin-aarch64.zip"
-        sha256 "f0c12816cf8b44e372e2b88e7dc5cbcee342b4fd0f3bc86797762e039939f6f6"
+        sha256 "64a70fe290bd6391a09d555d4e4e1a8df56543e526bb1381ab344a385348572c"
       else
         url "https://github.com/oven-sh/bun/releases/download/bun-v1.1.42/bun-darwin-x64.zip"
         sha256 "d51f48c2d763a97db1d89a4cf2b726fdb8db49fb3ad079b6e0f3f1d8497e5e00"
