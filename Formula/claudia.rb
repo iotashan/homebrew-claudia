@@ -75,18 +75,17 @@ class Claudia < Formula
         ohai "Attempting to create DMG manually..."
         dmg_name = "Claudia_0.1.0_#{Hardware::CPU.arch}.dmg"
         
-        # Create DMG in temp location first
-        temp_dmg = buildpath/"#{dmg_name}.tmp"
+        # Create DMG in buildpath directly
+        dmg_path = buildpath/dmg_name
+        
+        # Remove any existing DMG
+        dmg_path.unlink if dmg_path.exist?
         
         # Create a simple DMG from the app bundle
         system "hdiutil", "create", "-volname", "Claudia", "-srcfolder", app_path, 
-               "-ov", "-format", "UDZO", temp_dmg
+               "-ov", "-format", "UDZO", dmg_path
         
-        if File.exist?(temp_dmg)
-          # Move to expected location
-          dmg_path = buildpath/dmg_name
-          FileUtils.mv(temp_dmg, dmg_path)
-        else
+        unless File.exist?(dmg_path)
           odie "Failed to create DMG installer. App bundle is at: #{app_path}"
         end
       else
